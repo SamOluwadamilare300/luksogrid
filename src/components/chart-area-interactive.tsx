@@ -229,7 +229,7 @@ export function ChartAreaInteractive({
                 axisLine={false}
                 tickMargin={8}
                 minTickGap={32}
-                tickFormatter={value => {
+                tickFormatter={(value: string | number | Date) => {
                   const date = new Date(value);
                   return date.toLocaleDateString("en-US", {
                     month: "short",
@@ -239,7 +239,7 @@ export function ChartAreaInteractive({
               />
               <YAxis
                 domain={["auto", "auto"]}
-                tickFormatter={value => value.toLocaleString()}
+                tickFormatter={(value: { toLocaleString: () => any; }) => value.toLocaleString()}
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}
@@ -248,7 +248,7 @@ export function ChartAreaInteractive({
                 cursor={false}
                 content={
                   <ChartTooltipContent
-                    labelFormatter={value => {
+                    labelFormatter={(value: string | number | Date) => {
                       return new Date(value).toLocaleDateString("en-US", {
                         weekday: "short",
                         month: "short",
