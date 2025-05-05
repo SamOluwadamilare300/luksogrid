@@ -1,0 +1,109 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  // output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AIModel {
+  id          Int        @id @default(autoincrement())
+  name        String
+  description String?
+  model_type  String     @default("deepseek") // Now specific to DeepSeek
+  model_name  String     @default("DeepSeek-V3-0324") // Specific model version
+  is_active   Boolean    @default(true)
+  parameters  Json?      @default("{}") // Can store temperature, maxTokens etc.
+  predictions AIPrediction[]
+  userPreferences UserModelPreference[]
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  @@map("ai_models")
+}
+
+model AIPrediction {
+  id          Int      @id @default(autoincrement())
+  model       AIModel  @relation(fields: [modelId], references: [id])
+  modelId     Int
+   modelType    String 
+    p0           Float?  
+  asset       String
+  action      String   // 'buy' | 'sell' | 'hold'
+  confidence  Float
+  timeframe   String   // '1h' | '4h' | '1d' | '1w'
+  reasoning   String
+  priceTarget Float?
+  performance Float?
+  verified    Boolean  @default(false)
+  modelSource String   @default("deepseek") // Tracks which AI generated this
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("ai_predictions")
+}
+
+
+model UserModelPreference {
+  id          Int       @id @default(autoincrement())
+  userAddress String
+  model       AIModel   @relation(fields: [modelId], references: [id])
+  modelId     Int
+  isDefault   Boolean   @default(false)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@unique([userAddress, modelId], name: "userAddress_modelId")
+  @@map("user_model_preferences")
+}
+
+model Signal {
+  id             Int       @id @default(autoincrement())
+  asset          String
+  action         String
+  timeframe      String
+  priceTarget    String?
+  confidenceLevel Int
+  analysis       String
+  // creatorName    String    @default("Anonymous")
+  // creatorAddress String    @default("0x0000000000000000000000000000000000000000")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at")
+  comments       Comment[]
+  likes          Like[]
+
+  @@map("signals")
+}
+  
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  content   String
+  authorName String
+  authorAddress String
+  createdAt DateTime @default(now()) @map("created_at")
+  signal    Signal   @relation(fields: [signalId], references: [id], onDelete: Cascade)
+  signalId  Int      @map("signal_id")
+
+  @@map("comments")
+}
+
+model Like {
+  id        Int      @id @default(autoincrement())
+  userAddress String
+  userName   String
+  createdAt DateTime @default(now()) @map("created_at")
+  signal    Signal   @relation(fields: [signalId], references: [id], onDelete: Cascade)
+  signalId  Int      @map("signal_id")
+
+  @@unique([userAddress, signalId])
+  @@map("likes")
+}
+

@@ -1,0 +1,201 @@
+
+
+// PrismaClient is attached to the `global` object in development to prevent
+// exhausting your database connection limit.
+// Learn more: https://pris.ly/d/help/next-js-best-practices
+
+import { PrismaClient } from "@prisma/client";
+
+const globalForPrisma = global as unknown as { prisma: PrismaClient }
+
+export const prisma =
+  globalForPrisma.prisma ||
+  new PrismaClient({
+    log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
+  })
+
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma
+
+// Helper function to get all AI models
+export async function getAIModels() {
+  try {
+    return await prisma.aIModel.findMany({
+      where: {
+        is_active: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        model_type: true,
+        parameters: true,
+        description: true,
+        is_active: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: {
+        name: "asc",
+      },
+    })
+  } catch (error) {
+    console.error("Error fetching AI models:", error)
+    return []
+  }
+}
+
+// Helper function to get a specific AI model
+export async function getAIModel(id: number) {
+  try {
+    const model = await prisma.aIModel.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        model_type: true,
+        parameters: true,
+        is_active: true,
+      },
+    })
+
+    if (model) {
+      return {
+        ...model,
+        map: null,
+        filter: (arg0: (model: any) => any) => [model].filter(arg0),
+        parameters: model.parameters as Record<string, any>,
+      }
+    }
+
+    return null
+  } catch (error) {
+    console.error(`Error fetching AI model with id ${id}:`, error)
+    return null
+  }
+}
+
+// Helper function to get user's preferred models
+export async function getUserModelPreferences(userAddress: string) {
+  try {
+    return await prisma.userModelPreference.findMany({
+      where: { userAddress },
+      include: {
+        model: true,
+      },
+      orderBy: {
+        model: {
+          name: "asc",
+        },
+      },
+    })
+  } catch (error) {
+    console.error(`Error fetching user model preferences for ${userAddress}:`, error)
+    return []
+  }
+}
+
+// Helper function to set user's model preference
+export async function setUserModelPreference(userAddress: string, modelId: number, isDefault = false) {
+  try {
+    return await prisma.userModelPreference.upsert({
+      where: {
+        userAddress_modelId: { userAddress, modelId },
+      },
+      update: {
+        isDefault,
+      },
+      create: {
+        userAddress,
+        modelId,
+        isDefault,
+      },
+    })
+  } catch (error) {
+    console.error(`Error setting user model preference for ${userAddress}:`, error)
+    throw error
+  }
+}
+
+// Helper function to remove user's model preference
+export async function removeUserModelPreference(userAddress: string, modelId: number) {
+  try {
+    return await prisma.userModelPreference.delete({
+      where: {
+        userAddress_modelId: { userAddress, modelId },
+      },
+    })
+  } catch (error) {
+    console.error(`Error removing user model preference for ${userAddress}:`, error)
+    throw error
+  }
+}
+
+// Helper function to get AI predictions
+export async function getAIPredictions(modelIds: number[] = [], limit = 10) {
+  try {
+    return await prisma.aIPrediction.findMany({
+      where: modelIds.length > 0 ? { modelId: { in: modelIds } } : {},
+      include: {
+        model: {
+          select: { name: true },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: limit,
+    })
+  } catch (error) {
+    console.error("Error fetching AI predictions:", error)
+    return []
+  }
+}
+
+// Helper function to save an AI prediction
+export async function saveAIPrediction(
+  modelId: number,
+  modelType: string,
+  asset: string,
+  confidence: number,
+  action: string,
+  reasoning: string,
+  p0: number | null,
+  model: string,
+  timeframe: string,
+  priceTarget?: number,
+) {
+  try {
+    return await prisma.aIPrediction.create({
+      data: {
+        modelId,
+        asset,
+        modelType,  // Must match schema
+        // model,     
+        action,
+        confidence,
+        timeframe,
+        p0,        
+        reasoning,
+        priceTarget: priceTarget ?? null,
+      },
+    })
+  } catch (error) {
+    console.error("Error saving AI prediction:", error)
+    throw error
+  }
+}
+
+// Helper function to update prediction performance
+export async function updatePredictionPerformance(id: number, performance: number, verified = true) {
+  try {
+    return await prisma.aIPrediction.update({
+      where: { id },
+      data: {
+        performance,
+        verified,
+      },
+    })
+  } catch (error) {
+    console.error(`Error updating prediction performance for id ${id}:`, error)
+    throw error
+  }
+}
